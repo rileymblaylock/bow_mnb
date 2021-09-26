@@ -1,4 +1,4 @@
-# BagofWordsMultinomialNaiveBayes for text classification
+# simple_mnb
 Given a set of training data (emails) in "bag of words" format with corresponding class labels, this model predicts class labels for emails in the test dataset. This model uses multinomial naive Bayes algorithm implemented from scratch, using minimal libraries except nltk for stopwords and SnowballStemmer for preprocessing.
 
 Sub-methods employed:
@@ -6,6 +6,6 @@ Sub-methods employed:
   - Modified Laplace Smoothing
   - Partial log-sum-exp trick to prevent float underflow
 
-Final accuracy: ~85%
+Final accuracy: ~81%
 
 Better feature selection needed for improvement to approach ~90% accuracy
