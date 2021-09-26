@@ -5,25 +5,47 @@ from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
 from sklearn import metrics
 
-def train_and_test(trainPath, validationPath=None, testPath=None, tfidf=False, stem=False, laplace=0.001, outputFile=None):
+'''
+
+Specify paths for training and testing data as folders containing subfolders, each with the name of their class label
+Example: for class labels A, B, and C, specify './data/' if /data contains subfolders each called /A, /B, and /C, with
+each folder containing individual documents (.txt, .res)
+
+document should be in BOW format (i.e., each line is a given word and its number of occurences, followed by a newline character)
+
+currently no support for non-BOW format // TO-DO
+
+Optional paramters:
+    set fileType to be txt or res, default is res
+    set tfidf=True to use TF-IDF vectorization instead of count vectorization (default)
+    set stem=True to use SnowballStemmer on tokens
+    try different laplace value to tune classifier (0.1, 0.05, 0.01, 0.005, 0.001, etc.)
+    set outputFile=True to write predicted labels for some test data (per document) to a single text file
+
+'''
+
+def train_and_test(trainPath, validationPath=None, testPath=None, fileType='res', tfidf=False, stem=False, laplace=0.001, outputFile=None):
     stop_words = set(stopwords.words('english'))
     ss = SnowballStemmer(language='english')
     totalDocs=0 #total number of docs
     vocabSize = 0 #total number of unique words - will be same size as keys of vocab{}
     vocab = {} #holds all words and their frequencies
     wordPerCat = {}; docPerCat = {}; vocabSizePerCat = {}; numDocsWithTerm = {}
-    for folder in sorted(glob.glob(trainPath)):
-        folderList = folder.split('_')
-        classLetter = folderList[2]
+    if (fileType == 'res'):
+        encoding = 'cp1252'
+    else:
+        encoding = 'utf-8'
+    for folder in sorted(glob.glob(trainPath + '*')):
+        classLetter = folder[-1]
         dicForFolder = {}
-        for filename in sorted(glob.glob(folder+"/*.res")):
+        for filename in sorted(glob.glob(folder+"/*." + fileType)):
             totalDocs+=1 #incremement total num docs
             try:
                 docPerCat[classLetter]+=1 #increment docs per category
             except:
                 docPerCat[classLetter]=1
             totalNumWordsInDoc = 0
-            f=open(filename, errors='ignore', encoding='cp1252')
+            f=open(filename, errors='ignore', encoding=encoding)
             for line in f:
                 line = line.rstrip()
                 line = line.split(" ")
@@ -74,13 +96,12 @@ def train_and_test(trainPath, validationPath=None, testPath=None, tfidf=False, s
         y_true, y_pred = [], []
         arrayforvalidation = []
 
-        for folder in sorted(glob.glob(validationPath)):
-            folderList = folder.split('_')
-            classLetter = folderList[2] #will be A, B, C, . . . or I
-            for filename in sorted(glob.glob(folder+"/*.res")):
+        for folder in sorted(glob.glob(validationPath + '*')):
+            classLetter = folder[-1]
+            for filename in sorted(glob.glob(folder+"/*." + fileType)):
                 count+=1
                 allPWC = {}
-                f=open(filename, errors='ignore', encoding='cp1252')
+                f=open(filename, errors='ignore', encoding=encoding)
                 for line in f:
                     line = line.rstrip()
                     line = line.split(" ")
@@ -126,9 +147,9 @@ def train_and_test(trainPath, validationPath=None, testPath=None, tfidf=False, s
         count = 0; catKeyCount = 0; arraytowrite = []
         filenamearray = []
 
-        files = sorted(glob.glob(testPath + '/*.res'), key=len)
+        files = sorted(glob.glob(testPath + '/*.' + fileType), key=len)
         for filename in files:
-            f=open(filename, errors='ignore', encoding='cp1252')
+            f=open(filename, errors='ignore', encoding=encoding)
             filenamearray.append(str(filename))
             allPWC = {}
             for line in f:
@@ -168,4 +189,6 @@ def train_and_test(trainPath, validationPath=None, testPath=None, tfidf=False, s
         
         return arraytowrite
 
-train_and_test('src/simple_mnb/data/train/class_*_train', validationPath='src/simple_mnb/data/validation/class_*_validation', testPath='src/simple_mnb/data/test/test', stem=True, outputFile='output.txt')
+    if not (testPath or validationPath):
+        print("Please specify a directory of validation data or test data in order to test this classifier.")
+

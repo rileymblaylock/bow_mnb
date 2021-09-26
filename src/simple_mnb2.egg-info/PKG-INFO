@@ -1,0 +1,21 @@
+Metadata-Version: 2.1
+Name: simple-mnb2
+Version: 0.0.1
+Summary: Simple Multinomial Naive Bayes Classifier
+Home-page: https://github.com/rileymblaylock/simple_mnb
+Author: Riley M. Blaylock
+Author-email: rileyblaylock98@gmail.com
+License: UNKNOWN
+Project-URL: Bug Tracker, https://github.com/rileymblaylock/simple_mnb/issues
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+License-File: LICENSE
+
+# simple_mnb
+Given training data in BOW format, trains a simple multinomial Naive Bayes classifier
+
+

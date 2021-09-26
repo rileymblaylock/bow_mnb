@@ -2,11 +2,7 @@
 requires = [
     "setuptools>=42",
     "wheel",
-    "glob",
-    "math",
-    "re",
-    "nltk.corpus",
-    "nltk.stem",
+    "nltk",
     "sklearn"
 ]
 build-backend = "setuptools.build_meta"
