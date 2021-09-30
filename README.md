@@ -15,10 +15,43 @@ mnb.train_and_test('./training/files/', './validation/files/')
 ```
 
 Specify paths for training and testing data as folders containing subfolders, each with the name of their class label
-Example: for class labels A, B, and C, specify './trainingdata/' if /trainingdata contains subfolders each called /A, /B, and /C, with
-each folder containing individual documents (.txt, .res), and the same format for testing and/or validation data
+
+Example:
+
+Class labels A, B, and C
+
+Directory structure should be as follows:
+```
+training
+    ├──A
+       ├──doc1.txt
+       ├──doc2.txt
+       └──...
+    ├──B
+       ├──doc1.txt
+       ├──doc2.txt
+       └──...
+    └──C
+       ├──doc1.txt
+       ├──doc2.txt
+       └──...
+```
+
+For the above directory structure, I would train the classifier as follows:
+```
+mnb.train_and_test('./training/')
+```
 
 An individiual document should be in BOW format (i.e., each line is a given word and its number of occurences, followed by a newline character)
+
+Example: 
+```
+snow 5
+orange 2
+the 98
+blog 4
+...
+```
 
 *currently no support for non-BOW format // TO-DO - more file type and format handling*
 
