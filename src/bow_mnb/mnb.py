@@ -5,7 +5,16 @@ from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
 from sklearn import metrics
 
+# Utils
+from src.util.utils import *
+
 '''
+
+Multinomial Naive Bayes - One method for training and testing, optional parameters - one line of code to train and test the classifier
+
+Usage example:
+import simple_mnb.simple_mnb as mnb
+mnb.train_and_test('./training/files/', './validation/files/')
 
 Specify paths for training and testing data as folders containing subfolders, each with the name of their class label
 Example: for class labels A, B, and C, specify './data/' if /data contains subfolders each called /A, /B, and /C, with
@@ -13,18 +22,19 @@ each folder containing individual documents (.txt, .res)
 
 document should be in BOW format (i.e., each line is a given word and its number of occurences, followed by a newline character)
 
-currently no support for non-BOW format // TO-DO
+currently no support for non-BOW format // TO-DO - more file type and format handling
 
 Optional paramters:
     set fileType to be txt or res, default is res
     set tfidf=True to use TF-IDF vectorization instead of count vectorization (default)
     set stem=True to use SnowballStemmer on tokens
     try different laplace value to tune classifier (0.1, 0.05, 0.01, 0.005, 0.001, etc.)
-    set outputFile=True to write predicted labels for some test data (per document) to a single text file
+    set outputFile=True to write predicted labels for some test or validation data (per document) to a single text file
 
 '''
 
 def train_and_test(trainPath, validationPath=None, testPath=None, fileType='res', tfidf=False, stem=False, laplace=0.001, outputFile=None):
+    # Stop words and stemmer
     stop_words = set(stopwords.words('english'))
     ss = SnowballStemmer(language='english')
     totalDocs=0 #total number of docs
@@ -33,8 +43,10 @@ def train_and_test(trainPath, validationPath=None, testPath=None, fileType='res'
     wordPerCat = {}; docPerCat = {}; vocabSizePerCat = {}; numDocsWithTerm = {}
     if (fileType == 'res'):
         encoding = 'cp1252'
-    else:
+    elif (fileType == 'txt'):
         encoding = 'utf-8'
+    else:
+        print("Error. Unsupported file type.")
     for folder in sorted(glob.glob(trainPath + '*')):
         classLetter = folder[-1]
         dicForFolder = {}
@@ -80,15 +92,10 @@ def train_and_test(trainPath, validationPath=None, testPath=None, fileType='res'
         wordPerCat[classLetter] = dicForFolder
 
     if (tfidf):
-        for i in wordPerCat: #calculates tf-idf for each word per class in wordPerCat
-            for key, value in wordPerCat[i].items():
-                deted = int(numDocsWithTerm[key])
-                wordPerCat[i][key] = float(float(wordPerCat[i][key]) * (math.log(totalDocs/deted)))
-
+        wordPerCat = tfidf_calc(wordPerCat, numDocsWithTerm, totalDocs)
+    
     #all prior probs for each class
-    priorsDict = {}
-    for key in docPerCat.keys():
-        priorsDict[key] = math.log(float(docPerCat[key]/totalDocs)) #prior probability of any given class
+    priorsDict = prior_probs_calc(docPerCat, totalDocs)
 
     # VALIDATION
     if (validationPath):
@@ -112,35 +119,19 @@ def train_and_test(trainPath, validationPath=None, testPath=None, fileType='res'
                         if (stem):
                             line[0] = ss.stem(line[0])
                         while i <= int(line[1]):
-                            for key in docPerCat.keys():
-                                if line[0] in wordPerCat[key]:
-                                    c_in_c = float(wordPerCat[key][line[0]]) #count in class
-                                else:
-                                    c_in_c = 0.0
-                                try: #get probablity of class given word
-                                    allPWC[key].append(math.log(float((c_in_c + laplace)/((vocabSize) + vocabSizePerCat[key]))))
-                                except:
-                                    allPWC[key] = [math.log(float((c_in_c + laplace)/((vocabSize) + vocabSizePerCat[key])))]
+                            allPWC = pwc_calc(allPWC, line[0], docPerCat, wordPerCat, laplace, vocabSize, vocabSizePerCat)
                             i+=1
             
-                dictOfClassProb = {}
-                for key in docPerCat.keys():
-                    dictOfClassProb[key] = priorsDict[key] + sum(allPWC[key])
+                dictOfClassProb = class_prob_calc(allPWC, priorsDict)
                     
-                classPredicted = max(dictOfClassProb, key=dictOfClassProb.get)
-                y_true.append(classLetter)
-                y_pred.append(classPredicted)
-                if classPredicted == classLetter:
-                    numRight+=1
-                    arrayforvalidation.append("CORRECT /// Class: " + classLetter + "; Predicted: " + classPredicted + "; Total accuracy: " + str((numRight/count)*100))
-                else:
-                    arrayforvalidation.append("WRONG /// Class: " + classLetter + "; Predicted: " + classPredicted + "; Total accuracy: " + str((numRight/count)*100))
+                y_true, y_pred, arrayforvalidation, numRight = predict_class(dictOfClassProb, y_true, classLetter, y_pred, numRight, arrayforvalidation, count)
                 
         print('CONFUSION MATRIX \n\n' + str(metrics.confusion_matrix(y_true, y_pred)))
         print('\n\nCLASSIFICATION REPORT \n\n' + str(metrics.classification_report(y_true, y_pred, digits=3)))
-        with open("outputvalidation.txt", 'w') as file:
-            for i in range(len(arrayforvalidation)):
-                file.write(arrayforvalidation[i] + '\n')
+        if (outputFile):
+            with open("outputvalidation.txt", 'w') as file:
+                for i in range(len(arrayforvalidation)):
+                    file.write(arrayforvalidation[i] + '\n')
 
     #TEST
     if (testPath):
@@ -162,20 +153,10 @@ def train_and_test(trainPath, validationPath=None, testPath=None, fileType='res'
                     if (stem):
                         line[0] = ss.stem(line[0])
                     while i <= int(line[1]):
-                        for key in docPerCat.keys():
-                            if line[0] in wordPerCat[key]:
-                                c_in_c = float(wordPerCat[key][line[0]]) #count in class
-                            else:
-                                c_in_c = 0.0
-                            try:
-                                allPWC[key].append(math.log(float((c_in_c + laplace)/((vocabSize) + vocabSizePerCat[key]))))
-                            except:
-                                allPWC[key] = [math.log(float((c_in_c + laplace)/((vocabSize) + vocabSizePerCat[key])))]
+                        allPWC = pwc_calc(allPWC, line[0], docPerCat, wordPerCat, laplace, vocabSize, vocabSizePerCat)
                         i+=1
                             
-            dictOfClassProb = {}
-            for key in docPerCat.keys():
-                    dictOfClassProb[key] = priorsDict[key] + sum(allPWC[key])
+            dictOfClassProb = class_prob_calc(allPWC, priorsDict)
                     
             classPredicted = max(dictOfClassProb, key=dictOfClassProb.get)
             print("Filename: " + str(filename) + " // Predicted Class: " + classPredicted)
